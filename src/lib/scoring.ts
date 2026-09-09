@@ -1,4 +1,4 @@
-import type { Dupla, Prova, Resultado, RankingGeral, AjusteLeaderboard } from "./types";
+import type { Dupla, Prova, Resultado, RankingGeral } from "./types";
 
 /**
  * Formata o segundos em mm:ss (usado em FOR_TIME e FOR_TIME_CAP quando finalizado).
@@ -176,20 +176,19 @@ export function calcularRankingGeral(
   return linhas;
 }
 
-/** Aplica a ordem manual salva pelo organizador ao ranking geral. */
+/** Aplica uma ordem manual salva pelo organizador ao ranking geral. */
 export function aplicarAjusteLeaderboard(
   ranking: RankingGeral[],
-  ajustes: AjusteLeaderboard[]
+  ajustes: { dupla_id: string; posicao: number }[]
 ): RankingGeral[] {
   if (!ajustes.length) return ranking;
-
-  const ordem = new Map(ajustes.map((a) => [a.dupla_id, a.posicao]));
+  const ordem = new Map(ajustes.map((a) => [String(a.dupla_id), a.posicao]));
   return [...ranking].sort((a, b) => {
-    const pa = ordem.get(a.dupla_id);
-    const pb = ordem.get(b.dupla_id);
-    if (pa != null && pb != null) return pa - pb;
-    if (pa != null) return -1;
-    if (pb != null) return 1;
-    return 0;
+    const pa = ordem.get(String(a.dupla_id));
+    const pb = ordem.get(String(b.dupla_id));
+    if (pa != null && pb != null && pa !== pb) return pa - pb;
+    if (pa != null && pb == null) return -1;
+    if (pa == null && pb != null) return 1;
+    return ranking.indexOf(a) - ranking.indexOf(b);
   });
 }

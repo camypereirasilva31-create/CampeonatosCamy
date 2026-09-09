@@ -96,54 +96,6 @@ export async function editarProva(
 
 /** Alterna o campo `publicado`. Usado tanto no dia a dia quanto no botão
  * especial "PUBLICAR RESULTADO FINAL" da última prova (regra 10). */
-export async function salvarAjusteLeaderboard(
-  categoria_id: string,
-  ordemDuplas: string[]
-): Promise<AcaoResultado> {
-  await requireOrganizador();
-  const supabase = createAdminSupabase();
-
-  const { error: deleteError } = await supabase
-    .from("leaderboard_ajustes")
-    .delete()
-    .eq("categoria_id", categoria_id);
-
-  if (deleteError) return { ok: false, message: deleteError.message };
-
-  if (ordemDuplas.length) {
-    const { error: insertError } = await supabase
-      .from("leaderboard_ajustes")
-      .insert(
-        ordemDuplas.map((dupla_id, index) => ({
-          categoria_id,
-          dupla_id,
-          posicao: index + 1,
-        }))
-      );
-
-    if (insertError) return { ok: false, message: insertError.message };
-  }
-
-  revalidatePath("/admin/leaderboard-off");
-  revalidatePath("/leaderboard", "layout");
-  revalidatePath("/");
-  return { ok: true };
-}
-
-export async function limparAjusteLeaderboard(categoria_id: string): Promise<AcaoResultado> {
-  await requireOrganizador();
-  const supabase = createAdminSupabase();
-  const { error } = await supabase
-    .from("leaderboard_ajustes")
-    .delete()
-    .eq("categoria_id", categoria_id);
-  if (error) return { ok: false, message: error.message };
-  revalidatePath("/admin/leaderboard-off");
-  revalidatePath("/leaderboard", "layout");
-  revalidatePath("/");
-  return { ok: true };
-}
-
 export async function definirPublicacaoProva(id: string, publicado: boolean) {
   await requireOrganizador();
   const supabase = createAdminSupabase();
@@ -152,6 +104,34 @@ export async function definirPublicacaoProva(id: string, publicado: boolean) {
   revalidatePath("/admin/provas");
   revalidatePath("/admin/resultados");
   revalidatePath("/");
+}
+
+
+export async function salvarAjusteLeaderboard(
+  categoria_id: string,
+  ordem_duplas: string[]
+): Promise<AcaoResultado> {
+  await requireOrganizador();
+  const supabase = createAdminSupabase();
+  const { error: deleteError } = await supabase
+    .from("leaderboard_ajustes")
+    .delete()
+    .eq("categoria_id", categoria_id);
+  if (deleteError) return { ok: false, message: deleteError.message };
+
+  if (ordem_duplas.length) {
+    const linhas = ordem_duplas.map((dupla_id, index) => ({
+      categoria_id,
+      dupla_id,
+      posicao: index + 1,
+    }));
+    const { error: insertError } = await supabase.from("leaderboard_ajustes").insert(linhas);
+    if (insertError) return { ok: false, message: insertError.message };
+  }
+
+  revalidatePath("/admin/leaderboard-off");
+  revalidatePath("/leaderboard", "layout");
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------
@@ -190,25 +170,20 @@ export async function lancarResultado(dados: LancamentoResultado) {
     .single();
   if (!dupla) throw new Error("Dupla não encontrada.");
 
-  const payload: Record<string, unknown> = {
-    prova_id: dados.prova_id,
-    dupla_id: dados.dupla_id,
-    peso_lb: dados.peso_lb ?? null,
-    repeticoes: dados.repeticoes ?? null,
-    tempo_seconds: dados.tempo_seconds ?? null,
-    tomou_cap: dados.tomou_cap ?? false,
-  };
-
-  // `repeticoes_faltantes` só faz parte do resultado quando a prova é
-  // For Time + CAP e a dupla não concluiu dentro do CAP.
-  // Para Peso, Repetições e For Time normal, não enviamos essa coluna.
-  if (dados.tomou_cap === true && dados.repeticoes_faltantes != null) {
-    payload.repeticoes_faltantes = dados.repeticoes_faltantes;
-  }
-
   const { error: upsertError } = await supabase
     .from("resultados")
-    .upsert(payload, { onConflict: "prova_id,dupla_id" });
+    .upsert(
+      {
+        prova_id: dados.prova_id,
+        dupla_id: dados.dupla_id,
+        peso_lb: dados.peso_lb ?? null,
+        repeticoes: dados.repeticoes ?? null,
+        tempo_seconds: dados.tempo_seconds ?? null,
+        tomou_cap: dados.tomou_cap ?? false,
+        repeticoes_faltantes: dados.repeticoes_faltantes ?? null,
+      },
+      { onConflict: "prova_id,dupla_id" }
+    );
   if (upsertError) throw new Error(upsertError.message);
 
   await recalcularProva(dados.prova_id, dupla.categoria_id);
