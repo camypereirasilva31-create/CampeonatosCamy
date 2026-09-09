@@ -1,5 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import type { Dupla, Prova, Resultado } from "@/lib/types";
+import type { AjusteLeaderboard, Dupla, Prova, Resultado } from "@/lib/types";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import LeaderboardClient from "./LeaderboardClient";
@@ -44,6 +44,12 @@ export default async function LeaderboardPage({
     ? await supabase.from("resultados").select("*").in("prova_id", provaIds)
     : { data: [] as Resultado[] };
 
+  const { data: ajustes } = await supabase
+    .from("leaderboard_ajustes")
+    .select("categoria_id, dupla_id, posicao")
+    .eq("categoria_id", categoria.id)
+    .order("posicao");
+
   return (
     <main className="min-h-screen bg-steel-50">
       <header className="bg-navy text-white px-4 py-5 sm:px-6">
@@ -58,6 +64,7 @@ export default async function LeaderboardPage({
         duplasIniciais={(duplas ?? []) as Dupla[]}
         provasIniciais={(provas ?? []) as Prova[]}
         resultadosIniciais={(resultados ?? []) as Resultado[]}
+        ajustesIniciais={(ajustes ?? []) as AjusteLeaderboard[]}
       />
     </main>
   );

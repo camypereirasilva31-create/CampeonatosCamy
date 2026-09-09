@@ -40,6 +40,12 @@ export interface Resultado {
 }
 
 /** Linha de ranking geral, calculada em memória (nunca persistida). */
+export interface AjusteLeaderboard {
+  categoria_id: string;
+  dupla_id: string;
+  posicao: number;
+}
+
 export interface RankingGeral {
   dupla_id: string;
   nome_dupla: string;
