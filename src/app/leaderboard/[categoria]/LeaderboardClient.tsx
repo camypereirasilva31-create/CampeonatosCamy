@@ -3,8 +3,32 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { calcularRankingGeral } from "@/lib/scoring";
+import { calcularRankingGeral, formatTempo } from "@/lib/scoring";
 import type { Dupla, Prova, Resultado } from "@/lib/types";
+
+/** Formata só o RESULTADO (não os pontos) de uma prova para exibição no
+ * leaderboard público. Não usa formatResultado() de lib/scoring.ts de
+ * propósito: aquela função escreve "reps" no resultado de Repetições, e
+ * aqui isso não deve aparecer — sem tocar na formatação usada na tela de
+ * detalhamento da dupla. */
+function formatResultadoLeaderboard(prova: Prova, resultado: Resultado | undefined): string | null {
+  if (!resultado) return null;
+  switch (prova.tipo) {
+    case "PESO":
+      return resultado.peso_lb != null ? `${resultado.peso_lb} lb` : null;
+    case "REPETICOES":
+      return resultado.repeticoes != null ? `${resultado.repeticoes}` : null;
+    case "FOR_TIME":
+      return resultado.tempo_seconds != null ? formatTempo(resultado.tempo_seconds) : null;
+    case "FOR_TIME_CAP":
+      if (resultado.tomou_cap) {
+        return resultado.repeticoes_faltantes != null ? `CAP +${resultado.repeticoes_faltantes}` : null;
+      }
+      return resultado.tempo_seconds != null ? formatTempo(resultado.tempo_seconds) : null;
+    default:
+      return null;
+  }
+}
 
 export default function LeaderboardClient({
   categoriaId,
@@ -57,11 +81,15 @@ export default function LeaderboardClient({
   return (
     <div className="px-2 py-4 sm:px-6 sm:py-8">
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm border border-steel-100">
-        <table className="w-full text-sm">
+        <table className="sm:w-full text-sm">
           <thead>
             <tr className="bg-navy text-white">
-              <th className="px-3 py-3 text-left font-display font-semibold w-12">Pos.</th>
-              <th className="px-3 py-3 text-left font-display font-semibold">Dupla</th>
+              <th className="px-3 py-3 text-left font-display font-semibold w-12 whitespace-nowrap">
+                Pos.
+              </th>
+              <th className="px-3 py-3 text-left font-display font-semibold whitespace-nowrap">
+                Dupla
+              </th>
               {provasPublicadas.map((prova) => (
                 <th key={prova.id} className="px-3 py-3 text-center font-display font-semibold whitespace-nowrap">
                   P{prova.numero}
@@ -73,21 +101,14 @@ export default function LeaderboardClient({
           <tbody>
             {ranking.map((linha, idx) => {
               const posicao = idx + 1;
-              const destaque =
-                posicao === 1
-                  ? "bg-royal/10 border-l-4 border-royal"
-                  : posicao === 2
-                  ? "bg-steel-100 border-l-4 border-steel-400"
-                  : posicao === 3
-                  ? "bg-steel-50 border-l-4 border-steel-200"
-                  : "";
+              const destaque = posicao <= 3 ? "bg-royal/5 border-l-4 border-royal" : "bg-steel-50";
               return (
                 <tr
                   key={linha.dupla_id}
                   className={`border-b border-steel-100 last:border-0 ${destaque}`}
                 >
                   <td className="px-3 py-3 font-display font-bold text-navy">{posicao}</td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <Link
                       href={`/dupla/${linha.dupla_id}`}
                       className="font-medium text-navy hover:text-royal"
@@ -95,11 +116,27 @@ export default function LeaderboardClient({
                       {linha.nome_dupla}
                     </Link>
                   </td>
-                  {provasPublicadas.map((prova) => (
-                    <td key={prova.id} className="px-3 py-3 text-center text-steel-600">
-                      {linha.pontosPorProva[prova.id] ?? "—"}
-                    </td>
-                  ))}
+                  {provasPublicadas.map((prova) => {
+                    const resultado = resultados.find(
+                      (r) => r.dupla_id === linha.dupla_id && r.prova_id === prova.id
+                    );
+                    const textoResultado = formatResultadoLeaderboard(prova, resultado);
+                    const pontos = linha.pontosPorProva[prova.id];
+                    return (
+                      <td key={prova.id} className="px-3 py-3 text-center whitespace-nowrap">
+                        {textoResultado != null ? (
+                          <>
+                            <span className="font-bold text-navy">{textoResultado}</span>{" "}
+                            <span className="text-xs font-normal text-steel-400">
+                              ({pontos ?? 0} pts)
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-steel-300">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
                   <td className="px-3 py-3 text-center font-display font-bold text-royal">
                     {linha.totalPontos}
                   </td>
