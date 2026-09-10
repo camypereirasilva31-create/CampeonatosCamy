@@ -3,8 +3,7 @@
 import { useMemo, useState } from "react";
 import { aplicarAjusteLeaderboard, calcularRankingGeral, formatTempo } from "@/lib/scoring";
 import type { AjusteLeaderboard, Categoria, Dupla, Prova, Resultado } from "@/lib/types";
-import { salvarAjusteLeaderboard } from "./actions";
-
+import { salvarAjusteLeaderboard } from "@/app/admin/leaderboard-off/actions";
 function formatResultadoInterno(prova: Prova, resultado: Resultado | undefined): string | null {
   if (!resultado) return null;
   switch (prova.tipo) {
