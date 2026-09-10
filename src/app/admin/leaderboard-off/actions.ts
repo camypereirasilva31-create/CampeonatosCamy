@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireOrganizador } from "@/lib/auth";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { salvarAjusteLeaderboard } from "@/app/admin/leaderboard-off/actions";
+
 export type AcaoResultado = { ok: true } | { ok: false; message: string };
 
 export async function salvarAjusteLeaderboard(
