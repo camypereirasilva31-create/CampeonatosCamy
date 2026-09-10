@@ -42,7 +42,9 @@ export default function LeaderboardClient({ categoriaId, duplasIniciais, provasI
 
   const provasPublicadas = useMemo(() => provas.filter((p) => p.publicado).sort((a, b) => a.numero - b.numero), [provas]);
   const rankingBase = useMemo(() => calcularRankingGeral(duplas, provasPublicadas, resultados), [duplas, provasPublicadas, resultados]);
-  const ranking = useMemo(() => aplicarAjusteLeaderboard(rankingBase, ajustes.filter((a) => String(a.categoria_id) === String(categoriaId))), [rankingBase, ajustes, categoriaId]);
+  const ultimaProva = useMemo(() => provas.reduce((maior, p) => (!maior || p.numero > maior.numero ? p : maior), null as Prova | null), [provas]);
+const ultimaProvaPublicada = ultimaProva?.publicado === true;
+const ranking = useMemo(() => (ultimaProvaPublicada ? aplicarAjusteLeaderboard(rankingBase, ajustes.filter((a) => String(a.categoria_id) === String(categoriaId))) : rankingBase), [rankingBase, ajustes, categoriaId, ultimaProvaPublicada]);
   const resultadoPorChave = useMemo(() => new Map(resultados.map((r) => [`${r.prova_id}:${r.dupla_id}`, r])), [resultados]);
 
   return (
